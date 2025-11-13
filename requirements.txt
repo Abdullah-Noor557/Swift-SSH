@@ -2,4 +2,3 @@ customtkinter==5.2.2
 paramiko==3.4.0
 cryptography==41.0.7
 tkinterdnd2==0.3.0
-Pillow==9.5.0
