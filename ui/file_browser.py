@@ -22,6 +22,12 @@ class FileBrowser:
         self.current_path = "/home"
         self.file_list = []
         
+        # Performance optimization: pagination for large directories
+        self.items_per_page = 100
+        self.current_page = 0
+        self.total_pages = 0
+        self.filtered_file_list = []
+        
         # Create UI
         self._create_ui()
         
@@ -284,6 +290,47 @@ class FileBrowser:
         )
         self.new_folder_btn.pack(side="left")
         
+        # Middle section - Pagination controls
+        middle_buttons = ctk.CTkFrame(toolbar, fg_color="transparent")
+        middle_buttons.pack(side="left", expand=True, padx=16, pady=10)
+        
+        outline_style = get_button_style("outline")
+        
+        # Pagination label
+        self.page_label = ctk.CTkLabel(
+            middle_buttons,
+            text="Page 1 of 1",
+            font=get_modern_font(10),
+            text_color=ModernTheme.TEXT_SECONDARY
+        )
+        self.page_label.pack(side="left", padx=10)
+        
+        # Previous page button
+        self.prev_page_btn = ctk.CTkButton(
+            middle_buttons,
+            text="◀",
+            command=self._prev_page,
+            width=40,
+            height=32,
+            font=get_modern_font(14),
+            state="disabled",
+            **outline_style
+        )
+        self.prev_page_btn.pack(side="left", padx=2)
+        
+        # Next page button
+        self.next_page_btn = ctk.CTkButton(
+            middle_buttons,
+            text="▶",
+            command=self._next_page,
+            width=40,
+            height=32,
+            font=get_modern_font(14),
+            state="disabled",
+            **outline_style
+        )
+        self.next_page_btn.pack(side="left", padx=2)
+        
         # Right buttons group with enhanced styling
         right_buttons = ctk.CTkFrame(toolbar, fg_color="transparent")
         right_buttons.pack(side="right", padx=16, pady=10)
@@ -317,16 +364,34 @@ class FileBrowser:
         threading.Thread(target=load_files, daemon=True).start()
     
     def _update_file_list(self, files: List[Dict]):
-        """Update the file list display"""
+        """Update the file list display with pagination"""
         self.file_list = files
+        self.filtered_file_list = files
+        self.current_page = 0
+        
+        # Calculate total pages
+        self.total_pages = max(1, (len(self.filtered_file_list) + self.items_per_page - 1) // self.items_per_page)
+        
+        # Display first page
+        self._display_current_page()
+        
+        # Update pagination controls
+        self._update_pagination_controls()
+    
+    def _display_current_page(self):
+        """Display files for current page"""
         self._clear_file_list()
         
         # Add parent directory entry
         if self.current_path != "/":
             self.file_tree.insert("", "end", text="..", values=("", "", ""), tags=("parent",))
         
-        # Add files and directories
-        for file_info in files:
+        # Calculate page range
+        start_idx = self.current_page * self.items_per_page
+        end_idx = min(start_idx + self.items_per_page, len(self.filtered_file_list))
+        
+        # Add files and directories for current page
+        for file_info in self.filtered_file_list[start_idx:end_idx]:
             name = file_info["name"]
             size = self._format_size(file_info["size"])
             permissions = file_info["permissions"]
@@ -348,6 +413,39 @@ class FileBrowser:
         self.file_tree.tag_configure("directory", foreground=ModernTheme.ACCENT_WARNING)
         self.file_tree.tag_configure("file", foreground=ModernTheme.TEXT_PRIMARY)
         self.file_tree.tag_configure("parent", foreground=ModernTheme.TEXT_MUTED)
+    
+    def _update_pagination_controls(self):
+        """Update pagination button states and label"""
+        # Update label
+        total_items = len(self.filtered_file_list)
+        self.page_label.configure(
+            text=f"Page {self.current_page + 1} of {self.total_pages} ({total_items} items)"
+        )
+        
+        # Update button states
+        if self.current_page > 0:
+            self.prev_page_btn.configure(state="normal")
+        else:
+            self.prev_page_btn.configure(state="disabled")
+        
+        if self.current_page < self.total_pages - 1:
+            self.next_page_btn.configure(state="normal")
+        else:
+            self.next_page_btn.configure(state="disabled")
+    
+    def _prev_page(self):
+        """Go to previous page"""
+        if self.current_page > 0:
+            self.current_page -= 1
+            self._display_current_page()
+            self._update_pagination_controls()
+    
+    def _next_page(self):
+        """Go to next page"""
+        if self.current_page < self.total_pages - 1:
+            self.current_page += 1
+            self._display_current_page()
+            self._update_pagination_controls()
     
     def _clear_file_list(self):
         """Clear the file list"""

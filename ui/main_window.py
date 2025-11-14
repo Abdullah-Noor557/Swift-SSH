@@ -13,6 +13,7 @@ from ui.theme import ModernTheme, apply_theme, get_button_style, get_card_style,
 from ui.file_browser import FileBrowser
 from ui.terminal_panel import TerminalPanel
 from ui.discover_panel import DiscoverPanel
+from core.ui_accelerator import optimize_window
 
 class MainWindow:
     def __init__(self, ssh_manager: SSHManager, host: str, username: str, port: int):
@@ -38,6 +39,9 @@ class MainWindow:
         
         # Apply theme
         apply_theme()
+        
+        # Optimize window for better performance
+        optimize_window(self.window)
         
         # Configure window close
         self.window.protocol("WM_DELETE_WINDOW", self._on_closing)
@@ -168,6 +172,18 @@ class MainWindow:
         )
         self.new_terminal_btn.pack(side="left", padx=(0, 12))
         
+        # Debug dropdown menu
+        ghost_style = get_button_style("ghost")
+        self.debug_btn = ctk.CTkButton(
+            button_frame,
+            text="🐛 Debug",
+            command=self._show_debug_menu,
+            width=120,
+            height=42,
+            font=get_modern_font(11, "semibold"),
+            **ghost_style
+        )
+        self.debug_btn.pack(side="left", padx=(0, 12))
         
 
         # Disconnect button with enhanced styling
@@ -442,6 +458,118 @@ class MainWindow:
         """Update terminal count in status bar"""
         count = self.terminal_manager.get_terminal_count()
         self.terminal_count_label.configure(text=f"{count}")
+    
+    def _show_debug_menu(self):
+        """Show debug dropdown menu"""
+        # Create popup menu
+        debug_menu = ctk.CTkToplevel(self.window)
+        debug_menu.title("Debug Menu")
+        debug_menu.geometry("300x200")
+        debug_menu.attributes("-topmost", True)
+        debug_menu.resizable(False, False)
+        
+        # Position menu below debug button
+        x = self.debug_btn.winfo_rootx()
+        y = self.debug_btn.winfo_rooty() + self.debug_btn.winfo_height() + 5
+        debug_menu.geometry(f"+{x}+{y}")
+        
+        # Menu content frame
+        menu_frame = ctk.CTkFrame(debug_menu, fg_color=ModernTheme.BG_CARD)
+        menu_frame.pack(fill="both", expand=True, padx=10, pady=10)
+        
+        # Title
+        title_label = ctk.CTkLabel(
+            menu_frame,
+            text="Debug Tools",
+            font=get_modern_font(14, "bold"),
+            text_color=ModernTheme.TEXT_PRIMARY
+        )
+        title_label.pack(pady=(10, 20))
+        
+        # Demo App button
+        primary_style = get_button_style("primary")
+        demo_btn = ctk.CTkButton(
+            menu_frame,
+            text="🎭 Launch Demo Mode",
+            command=lambda: [debug_menu.destroy(), self._launch_demo_app()],
+            height=40,
+            font=get_modern_font(11, "semibold"),
+            **primary_style
+        )
+        demo_btn.pack(fill="x", padx=20, pady=5)
+        
+        # Performance stats button
+        secondary_style = get_button_style("secondary")
+        stats_btn = ctk.CTkButton(
+            menu_frame,
+            text="📊 Performance Stats",
+            command=lambda: [debug_menu.destroy(), self._show_performance_stats()],
+            height=40,
+            font=get_modern_font(11, "semibold"),
+            **secondary_style
+        )
+        stats_btn.pack(fill="x", padx=20, pady=5)
+        
+        # Close button
+        ghost_style = get_button_style("ghost")
+        close_btn = ctk.CTkButton(
+            menu_frame,
+            text="Close",
+            command=debug_menu.destroy,
+            height=30,
+            font=get_modern_font(10, "semibold"),
+            **ghost_style
+        )
+        close_btn.pack(fill="x", padx=20, pady=(15, 10))
+        
+        # Make menu modal
+        debug_menu.transient(self.window)
+        debug_menu.grab_set()
+    
+    def _launch_demo_app(self):
+        """Launch the app in demo mode with mock SSH"""
+        messagebox.showinfo(
+            "Demo Mode",
+            "Demo mode is available from the login screen.\n\n"
+            "Please restart the application and use the Debug menu on the login window."
+        )
+    
+    def _show_performance_stats(self):
+        """Show performance statistics"""
+        from core.ui_accelerator import get_accelerator
+        
+        # Calculate stats
+        terminal_count = self.terminal_manager.get_terminal_count()
+        accelerator = get_accelerator()
+        accel_status = accelerator.get_optimization_status()
+        
+        # Format acceleration status
+        dpi_status = "✓" if accel_status.get("dpi_awareness") else "✗"
+        priority_status = "✓" if accel_status.get("process_priority") else "✗"
+        
+        stats_text = f"""Performance Statistics:
+        
+Active Terminals: {terminal_count}
+Connection: {self.username}@{self.host}:{self.port}
+Status: Connected
+
+UI Optimizations:
+✓ Font caching enabled
+✓ Style caching enabled
+✓ Terminal output batching (50ms)
+✓ ANSI regex pre-compilation
+
+Graphics Acceleration:
+{dpi_status} DPI awareness (high-DPI displays)
+{priority_status} Process priority optimization
+✓ Window compositing enabled
+✓ Double buffering enabled
+
+Platform: {accel_status.get("platform", "Unknown")}
+Memory: ~{len(self.window.winfo_children())} widgets
+"""
+        
+        messagebox.showinfo("Performance Statistics", stats_text)
     
     def _on_closing(self):
         """Handle window closing"""

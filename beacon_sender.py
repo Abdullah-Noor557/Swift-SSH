@@ -34,6 +34,8 @@ def main() -> int:
     try:
         with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
             sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
+            print("Broadcasting....")
+            print("Advertisting SSH port: "+str(args.port))
             while True:
                 for addr in addrs:
                     try:
@@ -42,6 +44,7 @@ def main() -> int:
                         pass
                 time.sleep(args.interval)
     except KeyboardInterrupt:
+        print("Broadcast Ended!")
         return 0
     except Exception as e:
         print(f"Beacon sender error: {e}")

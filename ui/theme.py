@@ -110,15 +110,18 @@ def apply_theme():
     ctk.ThemeManager.theme["CTkScrollbar"]["button_hover_color"] = [ModernTheme.BORDER_PRIMARY, ModernTheme.BORDER_PRIMARY]
 
 def get_terminal_style():
-    """Get terminal-specific styling"""
-    return {
-        "bg": ModernTheme.TERMINAL_BG,
-        "fg": ModernTheme.TERMINAL_FG,
-        "insertbackground": ModernTheme.TERMINAL_CURSOR,
-        "font": ("Consolas", 11),
-        "relief": "flat",
-        "borderwidth": 0
-    }
+    """Get terminal-specific styling with caching"""
+    cache_key = ("terminal",)
+    if cache_key not in _style_cache:
+        _style_cache[cache_key] = {
+            "bg": ModernTheme.TERMINAL_BG,
+            "fg": ModernTheme.TERMINAL_FG,
+            "insertbackground": ModernTheme.TERMINAL_CURSOR,
+            "font": ("Consolas", 11),
+            "relief": "flat",
+            "borderwidth": 0
+        }
+    return _style_cache[cache_key]
 
 def create_tooltip(widget, text):
     """Create a modern tooltip for a widget"""
@@ -170,73 +173,82 @@ def get_file_icon_color(file_type):
     return icon_colors.get(file_type, icon_colors["default"])
 
 def get_button_style(variant="primary"):
-    """Get consistent button styling based on variant"""
-    styles = {
-        "primary": {
-            "fg_color": ModernTheme.ACCENT_PRIMARY,
-            "hover_color": ModernTheme.ACCENT_HIGHLIGHT,
-            "text_color": ModernTheme.TEXT_PRIMARY,
-            "border_width": 0,
-            "corner_radius": 8
-        },
-        "secondary": {
-            "fg_color": ModernTheme.ACCENT_SECONDARY,
-            "hover_color": ModernTheme.GRADIENT_MID,
-            "text_color": ModernTheme.TEXT_PRIMARY,
-            "border_width": 0,
-            "corner_radius": 8
-        },
-        "danger": {
-            "fg_color": ModernTheme.ACCENT_ERROR,
-            "hover_color": "#dc2626",
-            "text_color": ModernTheme.TEXT_PRIMARY,
-            "border_width": 0,
-            "corner_radius": 8
-        },
-        "success": {
-            "fg_color": ModernTheme.ACCENT_SUCCESS,
-            "hover_color": "#059669",
-            "text_color": ModernTheme.TEXT_PRIMARY,
-            "border_width": 0,
-            "corner_radius": 8
-        },
-        "ghost": {
-            "fg_color": "transparent",
-            "hover_color": ModernTheme.BG_HOVER,
-            "text_color": ModernTheme.TEXT_SECONDARY,
-            "border_width": 2,
-            "border_color": ModernTheme.BORDER_PRIMARY,
-            "corner_radius": 8
-        },
-        "outline": {
-            "fg_color": "transparent",
-            "hover_color": ModernTheme.BG_TERTIARY,
-            "text_color": ModernTheme.TEXT_PRIMARY,
-            "border_width": 2,
-            "border_color": ModernTheme.ACCENT_PRIMARY,
-            "corner_radius": 8
+    """Get consistent button styling based on variant with caching"""
+    cache_key = ("button", variant)
+    if cache_key not in _style_cache:
+        styles = {
+            "primary": {
+                "fg_color": ModernTheme.ACCENT_PRIMARY,
+                "hover_color": ModernTheme.ACCENT_HIGHLIGHT,
+                "text_color": ModernTheme.TEXT_PRIMARY,
+                "border_width": 0,
+                "corner_radius": 8
+            },
+            "secondary": {
+                "fg_color": ModernTheme.ACCENT_SECONDARY,
+                "hover_color": ModernTheme.GRADIENT_MID,
+                "text_color": ModernTheme.TEXT_PRIMARY,
+                "border_width": 0,
+                "corner_radius": 8
+            },
+            "danger": {
+                "fg_color": ModernTheme.ACCENT_ERROR,
+                "hover_color": "#dc2626",
+                "text_color": ModernTheme.TEXT_PRIMARY,
+                "border_width": 0,
+                "corner_radius": 8
+            },
+            "success": {
+                "fg_color": ModernTheme.ACCENT_SUCCESS,
+                "hover_color": "#059669",
+                "text_color": ModernTheme.TEXT_PRIMARY,
+                "border_width": 0,
+                "corner_radius": 8
+            },
+            "ghost": {
+                "fg_color": "transparent",
+                "hover_color": ModernTheme.BG_HOVER,
+                "text_color": ModernTheme.TEXT_SECONDARY,
+                "border_width": 2,
+                "border_color": ModernTheme.BORDER_PRIMARY,
+                "corner_radius": 8
+            },
+            "outline": {
+                "fg_color": "transparent",
+                "hover_color": ModernTheme.BG_TERTIARY,
+                "text_color": ModernTheme.TEXT_PRIMARY,
+                "border_width": 2,
+                "border_color": ModernTheme.ACCENT_PRIMARY,
+                "corner_radius": 8
+            }
         }
-    }
-    return styles.get(variant, styles["primary"])
+        _style_cache[cache_key] = styles.get(variant, styles["primary"])
+    return _style_cache[cache_key]
 
 def get_card_style():
-    """Get consistent card/panel styling"""
-    return {
-        "fg_color": ModernTheme.BG_CARD,
-        "border_width": 1,
-        "border_color": ModernTheme.BORDER_SUBTLE,
-        "corner_radius": 12
-    }
+    """Get consistent card/panel styling with caching"""
+    cache_key = ("card",)
+    if cache_key not in _style_cache:
+        _style_cache[cache_key] = {
+            "fg_color": ModernTheme.BG_CARD,
+            "border_width": 1,
+            "border_color": ModernTheme.BORDER_SUBTLE,
+            "corner_radius": 12
+        }
+    return _style_cache[cache_key]
 
 def get_input_style():
-    """Get consistent input field styling"""
-    return {
-        "fg_color": ModernTheme.BG_INPUT,
-        "border_width": 2,
-        "border_color": ModernTheme.BORDER_PRIMARY,
-        "text_color": ModernTheme.TEXT_PRIMARY,
-        "corner_radius": 8
-    }
+    """Get consistent input field styling with caching"""
+    cache_key = ("input",)
+    if cache_key not in _style_cache:
+        _style_cache[cache_key] = {
+            "fg_color": ModernTheme.BG_INPUT,
+            "border_width": 2,
+            "border_color": ModernTheme.BORDER_PRIMARY,
+            "text_color": ModernTheme.TEXT_PRIMARY,
+            "corner_radius": 8
+        }
+    return _style_cache[cache_key]
 
 def get_header_style():
     """Get consistent header styling"""
@@ -289,24 +301,26 @@ def get_status_color(status):
     }
     return status_colors.get(status, ModernTheme.TEXT_MUTED)
 
+# Performance optimization caches
+_font_cache = {}
+_style_cache = {}
+
 def get_modern_font(size=11, weight="normal"):
-    """Get modern font configuration"""
-    font_weights = {
-        "light": 300,
-        "normal": 400,
-        "medium": 500,
-        "semibold": 600,
-        "bold": 700
-    }
-    
-    # Map weight names to font tuples
-    if weight == "bold":
-        return ("Segoe UI", size, "bold")
-    elif weight in ["semibold", "medium"]:
-        return ("Segoe UI Semibold", size)
-    else:
-        return ("Segoe UI", size)
+    """Get modern font configuration with caching"""
+    cache_key = (size, weight)
+    if cache_key not in _font_cache:
+        # Map weight names to font tuples
+        if weight == "bold":
+            _font_cache[cache_key] = ("Segoe UI", size, "bold")
+        elif weight in ["semibold", "medium"]:
+            _font_cache[cache_key] = ("Segoe UI Semibold", size)
+        else:
+            _font_cache[cache_key] = ("Segoe UI", size)
+    return _font_cache[cache_key]
 
 def get_icon_font(size=14):
-    """Get emoji/icon font configuration"""
-    return ("Segoe UI Emoji", size)
+    """Get emoji/icon font configuration with caching"""
+    cache_key = ("icon", size)
+    if cache_key not in _font_cache:
+        _font_cache[cache_key] = ("Segoe UI Emoji", size)
+    return _font_cache[cache_key]

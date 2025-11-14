@@ -24,6 +24,14 @@ class TerminalPanel:
         self.current_terminal = None
         self.terminal_states = {}
         self.input_buffers = {}
+        
+        # Performance optimization: batch terminal output updates
+        self.output_buffers = {}
+        self.output_update_scheduled = {}
+        self.batch_delay_ms = 50  # Batch updates every 50ms
+        
+        # Compile ANSI regex pattern once for better performance
+        self.ansi_escape_pattern = re.compile(r'\x1b\[([0-9;?]*)([a-zA-Z])')
 
         self.ansi_color_map = {
             # Foreground
@@ -403,30 +411,52 @@ class TerminalPanel:
         editor.grab_set()
     
     def _on_terminal_output(self, terminal_name: str, data: str):
-        """Handle terminal output"""
+        """Handle terminal output with batching for better performance"""
         if terminal_name not in self.terminal_widgets:
             return
         
         processed_data = self._process_terminal_output(data)
         
-        # Update text widget in main thread
-        def update_text():
-            text_widget = self.terminal_widgets[terminal_name].text_widget
-            text_widget.configure(state="normal")
-            self._parse_and_insert_ansi(terminal_name, processed_data)
-            text_widget.configure(state="disabled")
-            text_widget.see("end")
+        # Add data to buffer
+        if terminal_name not in self.output_buffers:
+            self.output_buffers[terminal_name] = []
+        self.output_buffers[terminal_name].append(processed_data)
         
-        # Schedule update in main thread
-        self.parent.after(0, update_text)
+        # Schedule batched update if not already scheduled
+        if not self.output_update_scheduled.get(terminal_name, False):
+            self.output_update_scheduled[terminal_name] = True
+            self.parent.after(self.batch_delay_ms, lambda: self._flush_output_buffer(terminal_name))
+    
+    def _flush_output_buffer(self, terminal_name: str):
+        """Flush buffered terminal output to UI"""
+        if terminal_name not in self.terminal_widgets:
+            return
+        
+        # Get buffered data
+        buffered_data = self.output_buffers.get(terminal_name, [])
+        if not buffered_data:
+            self.output_update_scheduled[terminal_name] = False
+            return
+        
+        # Clear buffer
+        self.output_buffers[terminal_name] = []
+        self.output_update_scheduled[terminal_name] = False
+        
+        # Update text widget once with all buffered data
+        text_widget = self.terminal_widgets[terminal_name].text_widget
+        text_widget.configure(state="normal")
+        for data in buffered_data:
+            self._parse_and_insert_ansi(terminal_name, data)
+        text_widget.configure(state="disabled")
+        text_widget.see("end")
 
     def _parse_and_insert_ansi(self, terminal_name, data):
         """Parse ANSI escape codes and insert text with tags"""
         text_widget = self.terminal_widgets[terminal_name].text_widget
         current_tags = self.terminal_states[terminal_name]['tags']
         
-        ansi_escape_pattern = re.compile(r'\x1b\[([0-9;?]*)([a-zA-Z])')
-        parts = ansi_escape_pattern.split(data)
+        # Use pre-compiled pattern for better performance
+        parts = self.ansi_escape_pattern.split(data)
 
         text_to_insert = parts.pop(0)
         if text_to_insert:

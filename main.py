@@ -9,10 +9,15 @@ import customtkinter as ctk
 from ui.login_window_fixed import LoginWindow
 from ui.main_window import MainWindow
 from ui.theme import apply_theme
+from core.ui_accelerator import enable_ui_acceleration
 
 def main():
     """Main application entry point"""
     try:
+        # Enable UI acceleration and optimizations
+        accel_status = enable_ui_acceleration()
+        print(f"UI Acceleration Status: {accel_status}")
+        
         # Apply theme globally
         apply_theme()
         

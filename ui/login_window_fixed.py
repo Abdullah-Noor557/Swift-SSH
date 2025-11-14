@@ -11,6 +11,7 @@ from core.network_discovery import detect_local_networks, discover_all_local, sc
 from core.profile_manager import ProfileManager
 from core.ssh_manager import SSHManager
 from ui.theme import ModernTheme, apply_theme, get_button_style, get_card_style, get_input_style, create_tooltip, get_modern_font
+from core.ui_accelerator import optimize_window
 
 class LoginWindow:
     def __init__(self, on_connect_callback: Optional[Callable] = None):
@@ -21,23 +22,49 @@ class LoginWindow:
         # Create main window
         self.window = ctk.CTk()
         self.window.title("SwiftSSH - Connect to Server")
-        self.window.geometry("550x720")
-        self.window.resizable(False, True)
+        self.window.geometry("1000x800")
+        self.window.resizable(True, True)
         
         # Set minimum size
-        self.window.minsize(500, 650)
+        self.window.minsize(1000, 800)
         
-        # Apply theme
+        # Apply theme once
         apply_theme()
+        
+        # Performance optimization: Cache styles at initialization
+        self._cache_styles()
         
         # Center window
         self._center_window()
+        
+        # Optimize window for better performance
+        optimize_window(self.window)
         
         # Create UI
         self._create_ui()
         
         # Load saved profiles
         self._load_profiles()
+    
+    def _cache_styles(self):
+        """Cache commonly used styles for better performance"""
+        self.cached_card_style = get_card_style()
+        self.cached_input_style = get_input_style()
+        self.cached_primary_style = get_button_style("primary")
+        self.cached_secondary_style = get_button_style("secondary")
+        self.cached_danger_style = get_button_style("danger")
+        self.cached_outline_style = get_button_style("outline")
+        self.cached_ghost_style = get_button_style("ghost")
+        
+        # Cache fonts
+        self.cached_font_title = get_modern_font(36, "bold")
+        self.cached_font_subtitle = get_modern_font(12)
+        self.cached_font_header = get_modern_font(14, "bold")
+        self.cached_font_label = get_modern_font(11, "semibold")
+        self.cached_font_input = get_modern_font(11)
+        self.cached_font_button = get_modern_font(11, "semibold")
+        self.cached_font_small = get_modern_font(10)
+        self.cached_font_tiny = get_modern_font(9)
     
     def _center_window(self):
         """Center the window on screen"""
@@ -49,68 +76,99 @@ class LoginWindow:
         self.window.geometry(f"{width}x{height}+{x}+{y}")
     
     def _create_ui(self):
-        """Create the login UI"""
-        # Main scrollable frame (allows scrolling on smaller windows)
-        main_frame = ctk.CTkScrollableFrame(
-            self.window, 
-            fg_color=ModernTheme.BG_PRIMARY,
-            scrollbar_button_color=ModernTheme.SCROLLBAR_FG
-        )
-        main_frame.pack(fill="both", expand=True, padx=0, pady=0)
+        """Create the login UI with grid layout"""
+        # Configure window grid
+        self.window.grid_rowconfigure(0, weight=0)  # Header
+        self.window.grid_rowconfigure(1, weight=1)  # Main content
+        self.window.grid_rowconfigure(2, weight=0)  # Bottom buttons
+        self.window.grid_columnconfigure(0, weight=1)
         
-        # Header section with modern design
-        header_frame = ctk.CTkFrame(main_frame, fg_color="transparent")
-        header_frame.pack(pady=(30, 30), fill="x", padx=40)
+        # Main container
+        main_frame = ctk.CTkFrame(self.window, fg_color=ModernTheme.BG_PRIMARY)
+        main_frame.grid(row=0, column=0, rowspan=3, sticky="nsew", padx=0, pady=0)
         
-        # App icon with gradient-like styling
-        logo_container = ctk.CTkFrame(header_frame, fg_color="transparent")
-        logo_container.pack(pady=(0, 15))
+        # Configure main frame grid
+        main_frame.grid_rowconfigure(0, weight=0)  # Header
+        main_frame.grid_rowconfigure(1, weight=1)  # Content area
+        main_frame.grid_rowconfigure(2, weight=0)  # Buttons
+        main_frame.grid_columnconfigure(0, weight=1)
+        main_frame.grid_columnconfigure(1, weight=1)
+        
+        # Compact header section spanning both columns
+        header_frame = ctk.CTkFrame(main_frame, fg_color="transparent", height=80)
+        header_frame.grid(row=0, column=0, columnspan=2, sticky="ew", padx=20, pady=(15, 10))
+        header_frame.grid_propagate(False)
+        
+        # Left side - Logo and title
+        left_header = ctk.CTkFrame(header_frame, fg_color="transparent")
+        left_header.pack(side="left", padx=20)
+        
+        title_row = ctk.CTkFrame(left_header, fg_color="transparent")
+        title_row.pack(side="left")
         
         logo_label = ctk.CTkLabel(
-            logo_container,
+            title_row,
             text="⚡",
-            font=("Segoe UI Emoji", 56),
+            font=("Segoe UI Emoji", 32),
             text_color=ModernTheme.ACCENT_PRIMARY
         )
-        logo_label.pack()
+        logo_label.pack(side="left", padx=(0, 10))
         
-        # Title with enhanced typography
+        title_container = ctk.CTkFrame(title_row, fg_color="transparent")
+        title_container.pack(side="left")
+        
         title_label = ctk.CTkLabel(
-            header_frame,
+            title_container,
             text="SwiftSSH",
-            font=get_modern_font(36, "bold"),
+            font=get_modern_font(24, "bold"),
             text_color=ModernTheme.TEXT_PRIMARY
         )
-        title_label.pack(pady=(0, 8))
+        title_label.pack(anchor="w")
         
         subtitle_label = ctk.CTkLabel(
-            header_frame,
+            title_container,
             text="Secure & Fast SSH Client",
-            font=get_modern_font(12),
+            font=self.cached_font_small,
             text_color=ModernTheme.TEXT_TERTIARY
         )
-        subtitle_label.pack(pady=(0, 5))
+        subtitle_label.pack(anchor="w")
         
-        # Version badge
+        # Right side - Version
         version_badge = ctk.CTkFrame(header_frame, fg_color=ModernTheme.BG_TERTIARY, corner_radius=16)
-        version_badge.pack(pady=(8, 0))
+        version_badge.pack(side="right", padx=20)
         
         version_label = ctk.CTkLabel(
             version_badge,
             text="v1.0",
-            font=get_modern_font(9, "semibold"),
+            font=self.cached_font_tiny,
             text_color=ModernTheme.TEXT_MUTED
         )
-        version_label.pack(padx=12, pady=4)
+        version_label.pack(padx=12, pady=6)
         
-        # Profile selection card with enhanced styling
-        card_style = get_card_style()
-        profile_frame = ctk.CTkFrame(main_frame, **card_style)
-        profile_frame.pack(fill="x", padx=40, pady=(0, 18))
+        # LEFT COLUMN: Profile Selection (top) + Connection Form (bottom)
+        left_column = ctk.CTkFrame(main_frame, fg_color="transparent")
+        left_column.grid(row=1, column=0, sticky="nsew", padx=(20, 10), pady=(0, 10))
+        
+        # Configure left column grid
+        left_column.grid_rowconfigure(0, weight=0)  # Profile (compact)
+        left_column.grid_rowconfigure(1, weight=1)  # Form (expandable)
+        left_column.grid_columnconfigure(0, weight=1)
+        
+        # Profile selection card (top of left column)
+        profile_frame = ctk.CTkFrame(left_column, **self.cached_card_style)
+        profile_frame.grid(row=0, column=0, sticky="nsew", pady=(0, 10))
+        
+        # Connection form card (bottom of left column)
+        form_frame = ctk.CTkFrame(left_column, **self.cached_card_style)
+        form_frame.grid(row=1, column=0, sticky="nsew")
+        
+        # RIGHT COLUMN: Discovery only
+        right_column = ctk.CTkFrame(main_frame, fg_color="transparent")
+        right_column.grid(row=1, column=1, sticky="nsew", padx=(10, 20), pady=(0, 10))
         
         # Card header with icon and description
         card_header = ctk.CTkFrame(profile_frame, fg_color="transparent")
-        card_header.pack(fill="x", padx=24, pady=(24, 8))
+        card_header.pack(fill="x", padx=16, pady=(12, 6))
         
         header_left = ctk.CTkFrame(card_header, fg_color="transparent")
         header_left.pack(side="left", fill="x", expand=True)
@@ -143,31 +201,26 @@ class LoginWindow:
         
         # Profile dropdown with enhanced styling
         dropdown_container = ctk.CTkFrame(profile_frame, fg_color="transparent")
-        dropdown_container.pack(fill="x", padx=24, pady=(12, 0))
+        dropdown_container.pack(fill="x", padx=16, pady=(8, 0))
         
         self.profile_var = ctk.StringVar(value="New Connection")
-        input_style = get_input_style()
         self.profile_dropdown = ctk.CTkComboBox(
             dropdown_container,
             variable=self.profile_var,
             values=["New Connection"],
             command=self._on_profile_selected,
-            **input_style,
+            **self.cached_input_style,
             button_color=ModernTheme.ACCENT_PRIMARY,
             button_hover_color=ModernTheme.ACCENT_HIGHLIGHT,
             dropdown_fg_color=ModernTheme.BG_TERTIARY,
-            font=get_modern_font(11),
+            font=self.cached_font_input,
             height=44
         )
         self.profile_dropdown.pack(fill="x")
         
         # Profile management buttons with enhanced styling
         profile_buttons_frame = ctk.CTkFrame(profile_frame, fg_color="transparent")
-        profile_buttons_frame.pack(fill="x", padx=24, pady=(16, 24))
-        
-        outline_style = get_button_style("outline")
-        secondary_style = get_button_style("secondary")
-        danger_style = get_button_style("danger")
+        profile_buttons_frame.pack(fill="x", padx=16, pady=(12, 12))
         
         self.load_button = ctk.CTkButton(
             profile_buttons_frame,
@@ -175,8 +228,8 @@ class LoginWindow:
             command=self._load_selected_profile,
             width=110,
             height=38,
-            font=get_modern_font(11, "semibold"),
-            **outline_style
+            font=self.cached_font_button,
+            **self.cached_outline_style
         )
         self.load_button.pack(side="left", padx=(0, 8))
         
@@ -186,8 +239,8 @@ class LoginWindow:
             command=self._save_current_profile,
             width=110,
             height=38,
-            font=get_modern_font(11, "semibold"),
-            **secondary_style
+            font=self.cached_font_button,
+            **self.cached_secondary_style
         )
         self.save_button.pack(side="left", padx=(0, 8))
         
@@ -197,21 +250,19 @@ class LoginWindow:
             command=self._delete_selected_profile,
             width=110,
             height=38,
-            font=get_modern_font(11, "semibold"),
-            **danger_style
+            font=self.cached_font_button,
+            **self.cached_danger_style
         )
         self.delete_button.pack(side="left")
         
-        # Network Discovery card
-        self._build_discovery_card(main_frame, card_style)
-
-        # Connection form card with enhanced styling
-        form_frame = ctk.CTkFrame(main_frame, **card_style)
-        form_frame.pack(fill="x", padx=40, pady=(0, 20))
+        # Network Discovery card in right column
+        discover_card = ctk.CTkFrame(right_column, **self.cached_card_style)
+        discover_card.pack(fill="both", expand=True)
+        self._build_discovery_card(discover_card, self.cached_card_style)
         
         # Form header with icon and description
         form_header = ctk.CTkFrame(form_frame, fg_color="transparent")
-        form_header.pack(fill="x", padx=24, pady=(24, 20))
+        form_header.pack(fill="x", padx=16, pady=(12, 10))
         
         header_left = ctk.CTkFrame(form_header, fg_color="transparent")
         header_left.pack(side="left", fill="x", expand=True)
@@ -244,7 +295,7 @@ class LoginWindow:
         
         # Host field with enhanced styling
         host_frame = ctk.CTkFrame(form_frame, fg_color="transparent")
-        host_frame.pack(fill="x", padx=24, pady=(0, 16))
+        host_frame.pack(fill="x", padx=16, pady=(0, 10))
         
         host_label_row = ctk.CTkFrame(host_frame, fg_color="transparent")
         host_label_row.pack(fill="x", pady=(0, 8))
@@ -267,15 +318,15 @@ class LoginWindow:
         self.host_entry = ctk.CTkEntry(
             host_frame,
             placeholder_text="192.168.1.100 or example.com",
-            **input_style,
-            font=get_modern_font(11),
+            **self.cached_input_style,
+            font=self.cached_font_input,
             height=46
         )
         self.host_entry.pack(fill="x")
         
         # Username field with enhanced styling
         username_frame = ctk.CTkFrame(form_frame, fg_color="transparent")
-        username_frame.pack(fill="x", padx=24, pady=(0, 16))
+        username_frame.pack(fill="x", padx=16, pady=(0, 10))
         
         username_label_row = ctk.CTkFrame(username_frame, fg_color="transparent")
         username_label_row.pack(fill="x", pady=(0, 8))
@@ -298,15 +349,15 @@ class LoginWindow:
         self.username_entry = ctk.CTkEntry(
             username_frame,
             placeholder_text="root, admin, ubuntu...",
-            **input_style,
-            font=get_modern_font(11),
+            **self.cached_input_style,
+            font=self.cached_font_input,
             height=46
         )
         self.username_entry.pack(fill="x")
         
         # Password field with enhanced styling
         password_frame = ctk.CTkFrame(form_frame, fg_color="transparent")
-        password_frame.pack(fill="x", padx=24, pady=(0, 16))
+        password_frame.pack(fill="x", padx=16, pady=(0, 10))
         
         password_label_row = ctk.CTkFrame(password_frame, fg_color="transparent")
         password_label_row.pack(fill="x", pady=(0, 8))
@@ -330,8 +381,8 @@ class LoginWindow:
             password_frame,
             placeholder_text="Enter your password",
             show="●",
-            **input_style,
-            font=get_modern_font(11),
+            **self.cached_input_style,
+            font=self.cached_font_input,
             height=46
         )
         self.password_entry.pack(fill="x")
@@ -340,7 +391,7 @@ class LoginWindow:
         
         # Port field with enhanced styling
         port_frame = ctk.CTkFrame(form_frame, fg_color="transparent")
-        port_frame.pack(fill="x", padx=24, pady=(0, 24))
+        port_frame.pack(fill="x", padx=16, pady=(0, 12))
         
         port_label_row = ctk.CTkFrame(port_frame, fg_color="transparent")
         port_label_row.pack(fill="x", pady=(0, 8))
@@ -363,28 +414,47 @@ class LoginWindow:
         self.port_entry = ctk.CTkEntry(
             port_frame,
             placeholder_text="22 (default)",
-            **input_style,
-            font=get_modern_font(11),
+            **self.cached_input_style,
+            font=self.cached_font_input,
             height=46,
             width=160
         )
         self.port_entry.pack(anchor="w")
         
-        # Connect button with enhanced styling
-        connect_style = get_button_style("primary")
+        # BOTTOM ROW: Connect buttons spanning both columns
+        button_container = ctk.CTkFrame(main_frame, fg_color="transparent")
+        button_container.grid(row=2, column=0, columnspan=2, sticky="ew", padx=20, pady=(0, 15))
+        
+        # Button grid
+        button_container.grid_columnconfigure(0, weight=1)
+        button_container.grid_columnconfigure(1, weight=1)
+        button_container.grid_columnconfigure(2, weight=0)
+        
+        # Connect button
         self.connect_button = ctk.CTkButton(
-            main_frame,
+            button_container,
             text="⚡ Connect to Server",
             command=self._connect,
-            height=54,
-            font=get_modern_font(14, "bold"),
-            **connect_style
+            height=50,
+            font=get_modern_font(13, "bold"),
+            **self.cached_primary_style
         )
-        self.connect_button.pack(fill="x", padx=40, pady=(0, 20))
+        self.connect_button.grid(row=0, column=0, sticky="ew", padx=(0, 10))
         
-        # Status indicator with icon
-        status_frame = ctk.CTkFrame(main_frame, fg_color="transparent")
-        status_frame.pack(pady=(0, 20))
+        # Demo button
+        self.demo_button = ctk.CTkButton(
+            button_container,
+            text="🎭 Demo Mode",
+            command=self._connect_demo,
+            height=50,
+            font=self.cached_font_button,
+            **self.cached_ghost_style
+        )
+        self.demo_button.grid(row=0, column=1, sticky="ew", padx=(0, 10))
+        
+        # Status indicator
+        status_frame = ctk.CTkFrame(button_container, fg_color="transparent")
+        status_frame.grid(row=0, column=2, sticky="e")
         
         self.status_indicator = ctk.CTkLabel(
             status_frame,
@@ -397,24 +467,10 @@ class LoginWindow:
         self.status_label = ctk.CTkLabel(
             status_frame,
             text="Ready to connect",
-            font=get_modern_font(10),
+            font=self.cached_font_small,
             text_color=ModernTheme.TEXT_MUTED
         )
         self.status_label.pack(side="left")
-        
-        # Footer with features info
-        footer_frame = ctk.CTkFrame(main_frame, fg_color="transparent")
-        footer_frame.pack(pady=(5, 20))
-        
-        features = ["🔒 Secure", "⚡ Fast", "🎯 Reliable"]
-        for i, feature in enumerate(features):
-            feature_label = ctk.CTkLabel(
-                footer_frame,
-                text=feature,
-                font=get_modern_font(9),
-                text_color=ModernTheme.TEXT_MUTED
-            )
-            feature_label.pack(side="left", padx=8 if i < len(features) - 1 else 0)
         
         # Focus on host field for better UX
         self.host_entry.focus_set()
@@ -425,12 +481,10 @@ class LoginWindow:
         # Add tooltips for better UX
         self._add_tooltips()
     
-    def _build_discovery_card(self, main_frame, card_style):
-        discover_frame = ctk.CTkFrame(main_frame, **card_style)
-        discover_frame.pack(fill="x", padx=40, pady=(0, 18))
-        
+    def _build_discovery_card(self, discover_frame, card_style):
+        # discover_frame is already the card, just add content to it
         header = ctk.CTkFrame(discover_frame, fg_color="transparent")
-        header.pack(fill="x", padx=24, pady=(24, 8))
+        header.pack(fill="x", padx=16, pady=(12, 6))
         
         left = ctk.CTkFrame(header, fg_color="transparent")
         left.pack(side="left", fill="x", expand=True)
@@ -463,7 +517,7 @@ class LoginWindow:
         
         # Mode row
         mode_row = ctk.CTkFrame(discover_frame, fg_color="transparent")
-        mode_row.pack(fill="x", padx=24, pady=(8, 0))
+        mode_row.pack(fill="x", padx=16, pady=(4, 0))
         ctk.CTkLabel(
             mode_row,
             text="Mode",
@@ -482,7 +536,7 @@ class LoginWindow:
 
         # Controls row
         controls = ctk.CTkFrame(discover_frame, fg_color="transparent")
-        controls.pack(fill="x", padx=24, pady=(8, 8))
+        controls.pack(fill="x", padx=16, pady=(6, 6))
         
         self.discover_subnet_entry = ctk.CTkEntry(
             controls,
@@ -536,7 +590,7 @@ class LoginWindow:
         
         # Progress
         progress_row = ctk.CTkFrame(discover_frame, fg_color="transparent")
-        progress_row.pack(fill="x", padx=24, pady=(0, 8))
+        progress_row.pack(fill="x", padx=16, pady=(0, 6))
         self.discover_progress_label = ctk.CTkLabel(
             progress_row,
             text="Idle",
@@ -552,37 +606,56 @@ class LoginWindow:
         self.discover_progress.set(0)
         self.discover_progress.pack(fill="x")
         
-        # Results list
-        results_container = ctk.CTkFrame(discover_frame, fg_color=ModernTheme.BG_TERTIARY, corner_radius=10)
-        results_container.pack(fill="x", padx=24, pady=(4, 16))
+        # Results and Log side by side
+        results_log_container = ctk.CTkFrame(discover_frame, fg_color="transparent")
+        results_log_container.pack(fill="both", expand=True, padx=16, pady=(4, 12))
+        
+        # Configure grid for side by side layout
+        results_log_container.grid_columnconfigure(0, weight=1)
+        results_log_container.grid_columnconfigure(1, weight=1)
+        results_log_container.grid_rowconfigure(0, weight=1)
+        
+        # Results list (LEFT)
+        results_container = ctk.CTkFrame(results_log_container, fg_color=ModernTheme.BG_TERTIARY, corner_radius=10)
+        results_container.grid(row=0, column=0, sticky="nsew", padx=(0, 4))
+        
         ctk.CTkLabel(
             results_container,
-            text="Results (click to use host)",
+            text="Results (click to use)",
             font=get_modern_font(10, "semibold"),
             text_color=ModernTheme.TEXT_SECONDARY,
         ).pack(anchor="w", padx=12, pady=(10, 6))
         
-        self.discover_results = ctk.CTkFrame(results_container, fg_color="transparent")
-        self.discover_results.pack(fill="x", padx=12, pady=(0, 12))
+        # Scrollable results frame
+        results_scroll_container = ctk.CTkScrollableFrame(
+            results_container,
+            fg_color="transparent",
+            height=150
+        )
+        results_scroll_container.pack(fill="both", expand=True, padx=8, pady=(0, 8))
         
-        # Log
-        log_container = ctk.CTkFrame(discover_frame, fg_color=ModernTheme.BG_TERTIARY, corner_radius=10)
-        log_container.pack(fill="x", padx=24, pady=(0, 20))
+        self.discover_results = results_scroll_container
+        
+        # Log (RIGHT)
+        log_container = ctk.CTkFrame(results_log_container, fg_color=ModernTheme.BG_TERTIARY, corner_radius=10)
+        log_container.grid(row=0, column=1, sticky="nsew", padx=(4, 0))
+        
         ctk.CTkLabel(
             log_container,
             text="Discovery Log",
             font=get_modern_font(10, "semibold"),
             text_color=ModernTheme.TEXT_SECONDARY,
         ).pack(anchor="w", padx=12, pady=(10, 6))
+        
         self.discover_log_box = ctk.CTkTextbox(
             log_container,
             fg_color=ModernTheme.BG_TERTIARY,
             text_color=ModernTheme.TEXT_PRIMARY,
             corner_radius=8,
             wrap="word",
-            height=120,
+            height=150
         )
-        self.discover_log_box.pack(fill="x", padx=12, pady=(0, 12))
+        self.discover_log_box.pack(fill="both", expand=True, padx=8, pady=(0, 8))
         self.discover_log_box.configure(state="disabled")
         
         # Internal state
@@ -926,6 +999,35 @@ class LoginWindow:
             self.ssh_manager.connect(host, username, password, port)
 
         threading.Thread(target=connect_thread, daemon=True).start()
+    
+    def _connect_demo(self):
+        """Connect in demo mode without actual SSH"""
+        # Update UI
+        self.demo_button.configure(text="⏳ Starting Demo...", state="disabled")
+        self._update_status("Starting demo mode...", ModernTheme.STATUS_CONNECTING)
+        
+        def demo_connect():
+            # Simulate connection delay
+            import time
+            time.sleep(1)
+            
+            # Create mock SSH manager
+            from core.mock_ssh_manager import MockSSHManager
+            mock_ssh = MockSSHManager()
+            
+            # Simulate successful connection
+            mock_ssh.connected = True
+            
+            # Call success callback on main thread
+            def on_success():
+                self._update_status("✓ Demo mode active!", ModernTheme.STATUS_CONNECTED)
+                if self.on_connect_callback:
+                    self.on_connect_callback(mock_ssh, "demo-server", "demo_user", 22)
+                self.window.destroy()
+            
+            self.window.after(0, on_success)
+        
+        threading.Thread(target=demo_connect, daemon=True).start()
     
     def _update_status(self, message: str, color: str = None):
         """Update status label and indicator"""
